@@ -12,9 +12,8 @@ pg.display.set_caption("WEEWOOWEEWOO") # set the window title
 
 # -- PRE-DEFENITIONS -- #
 alfabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-current_letter = 0
 
-size = 6
+size = 2
 gap = 15
 square_size = 25
 
@@ -22,13 +21,11 @@ stage = 1
 level = 1
 
 grid = []
-grid_width = size * square_size + (size + 1) * gap
-grid_height = size * square_size + (size + 1) * gap
-
-start_x = (window_WIDTH - grid_width) / 2
-start_y = (window_HEIGHT - grid_height) / 2
 
 last_change = pg.time.get_ticks()
+font = pg.font.SysFont(None, 22)
+title_font = pg.font.SysFont(None, 32)
+
 
 # -- CLASSES -- #
 class Square():
@@ -37,7 +34,7 @@ class Square():
     self.y = y
     self.index = 0
     self.color = (0, 0, 255)
-    self.pressed = False
+    self.impostor = False
 
   def draw(self):
     self.create = pg.draw.rect(
@@ -50,69 +47,90 @@ class Square():
         square_size,
       )
     )
+    letter = font.render(alfabet[self.index], True, (255, 255, 255))
+    letter_rect = letter.get_rect(center=self.create.center)
+    window.blit(letter, letter_rect)
 
-  def color(self):
-
-    mousePos = pg.mouse.get_pos()
-    if self.create.collidepoint(mousePos):
-      pg.mouse.set_cursor(pg.cursors.tri_left)
-      if pg.mouse.get_pressed()[0] == 1 and self.pressed == False:
-        pg.mouse.set_cursor(pg.cursors.broken_x)
-        self.pressed = True
-        print("GET PRESSED!")
-    if pg.mouse.get_pressed()[0] == 0:
-      self.pressed = False
+  def update(self, event):
+    global level, stage, size
+    if event.type == pg.MOUSEBUTTONDOWN:
+      if self.create.collidepoint(event.pos):
+        if self.impostor:
+          print("SUCCESS!")
+          level += 1
+          if level > 5:
+            stage += 1
+            level = 1
+            size += 1
+          new_round()
+        else:
+          print("WRONG!")
 
 # -- FUNCTIONS -- #
-
 def new_round():
-  grid.clear()
-  for i in range(size):
-    row = []
-    for j in range(size):
-      square = Square(j, i)
-      row.append(square)
-    grid.append(row)
+    global grid_width, grid_height, start_x, start_y
 
-  all_squares = []
-  for row in grid:
-    for square in row:
-      all_squares.append(square)
+    grid_width = size * square_size + (size + 1) * gap
+    grid_height = size * square_size + (size + 1) * gap
 
-  impostor = random.choice(all_squares)
+    start_x = (window_WIDTH - grid_width) / 2
+    start_y = (window_HEIGHT - grid_height) / 2
 
-  for row in grid:
-    for square in row:
-      square.index = 0
+    grid.clear()
 
+    for i in range(size):
+        row = []
+        for j in range(size):
+            square = Square(j, i)
+            row.append(square)
+        grid.append(row)
+
+    all_squares = []
+
+    for row in grid:
+        for square in row:
+            all_squares.append(square)
+
+    impostor = random.choice(all_squares)
+    impostor.impostor = True
+
+    for row in grid:
+        for square in row:
+            square.index = 0
 new_round()
-
-arrayColor = []
-
-def arrayColorFunc():
-  randColor = (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255))
-  return randColor
-
-arrayColor.append(arrayColorFunc())
 
 # -- KEEP THE GAME RUNNING + SETTINGS -- #
 run = True
+
 while run:
   current_time = pg.time.get_ticks()
-  for event in pg.event.get():
+  events = pg.event.get()
+
+  for event in events:
     if event.type == pg.QUIT:
       run = False
+
   window.fill((95, 128, 132))
 
-  for row in grid:
-    for square in row:
-      square.draw()
+  title = title_font.render(f"Stage {stage}  |  Level {level}", True, (255, 255, 255))
+  title_rect = title.get_rect(center=(window_WIDTH / 2, start_y - 30))
+  window.blit(title, title_rect)
 
-  if current_time - last_change >= 10:
+  for row in grid:
+      for square in row:
+          square.draw()
+          for event in events:
+              square.update(event)
+
+  if current_time - last_change >= 1000:
     for row in grid:
       for square in row:
-        square.color = arrayColor[random.randint(1, len(arrayColor))]
-    last_change = pg.time.get_ticks()
+        if square.impostor:
+          square.index += 1
+          square.index %= (level + 1)
+        else:
+          square.index = random.randint(0, level)
+    last_change = current_time
   pg.display.flip()
 
 # -- FOOTER -- #
